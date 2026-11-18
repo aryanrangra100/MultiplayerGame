@@ -1,116 +1,119 @@
-# Multiplayer Quiz Game 🎮
+# Multiplayer Quiz Game
 
-A network quiz game where multiple players connect concurrently to a central server and compete on the same questions in real time.
+A Java-based multiplayer quiz application in which players connect to a central server and compete by answering the same quiz questions. The project uses **Java Swing** for the graphical interfaces, **TCP sockets** for client-server communication, and **SQLite** for persistent data.
 
----
+## Features
 
-## 📌 Project Architecture & Syllabus Concepts Applied
+- **Server control panel** to start and stop the quiz server.
+- **Configurable server port** (the screenshots show port `5555`).
+- **Player login and lobby** for connecting multiple clients.
+- **Two-player multiplayer matches** with a shared question flow.
+- **Timed questions** with a visible countdown.
+- **Live leaderboard** showing player scores and correct answers.
+- **SQLite database** for player records, quiz questions, and scores.
+- **Question categories**, including Java Programming, Java Swing, Networking, Java Threads, Databases, SQL, and Computer Science.
 
-This project strictly adheres to the course syllabus requirements across all 5 units:
+## Screenshots
 
-| Unit | Syllabus Concept Required | Implementation in Project |
-| :--- | :--- | :--- |
-| **Unit 1** | Classes `Player`, `Question`, `Game`; `String` and `StringBuffer` | - [`Player.java`](file:///c:/project/MultiplayerGame/src/quiz/model/Player.java): Represents player state, uses `StringBuffer` for stats and round summaries.<br>- [`Question.java`](file:///c:/project/MultiplayerGame/src/quiz/model/Question.java): Multiple-choice questions, uses `String` & `StringBuffer` for network serialization.<br>- [`Game.java`](file:///c:/project/MultiplayerGame/src/quiz/model/Game.java): Session state, score logic, formatted text leaderboard via `StringBuffer`. |
-| **Unit 2** | Interface `GameEvent`; abstract class `Connection`; package `quiz.net` | - Package: `quiz.net`<br>- [`GameEvent.java`](file:///c:/project/MultiplayerGame/src/quiz/net/GameEvent.java): Interface with network callbacks for player join, question broadcast, answer results, and leaderboard updates.<br>- [`Connection.java`](file:///c:/project/MultiplayerGame/src/quiz/net/Connection.java): Abstract base class managing `Socket`, `BufferedReader`, `PrintWriter`, and message routing. |
-| **Unit 3** | `ServerSocket` and `Socket` communication; thread per player; `ConnectionException` | - [`QuizServer.java`](file:///c:/project/MultiplayerGame/src/quiz/server/QuizServer.java): Uses `ServerSocket(port)` to listen for client connections.<br>- [`ClientHandler.java`](file:///c:/project/MultiplayerGame/src/quiz/net/ClientHandler.java): Implements `Runnable` ("thread per player") to handle each contestant independently.<br>- [`QuizClientConnection.java`](file:///c:/project/MultiplayerGame/src/quiz/net/QuizClientConnection.java): Uses `Socket` for client-side bidirectional communication.<br>- [`ConnectionException.java`](file:///c:/project/MultiplayerGame/src/quiz/net/ConnectionException.java): Custom exception class for socket I/O errors. |
-| **Unit 4** | JDBC to save scores and leaderboard (Tables: `players`, `questions`, `scores`) | - [`DatabaseManager.java`](file:///c:/project/MultiplayerGame/src/quiz/db/DatabaseManager.java): Uses SQLite JDBC with `PreparedStatement`, `Statement`, and `ResultSet`.<br>- Automatically initializes schema and seeds default questions.<br>- Persists final match results and queries all-time high score rankings. |
-| **Unit 5** | Swing `JLabel`, `JButton` options; `BorderLayout` and `GridLayout`; action events | - [`QuizClientGUI.java`](file:///c:/project/MultiplayerGame/src/quiz/client/QuizClientGUI.java):<br>  * `BorderLayout`: North (Timer & Question Index), Center (Question & Choices), East (Live Scoreboard), South (Player Info & Actions).<br>  * `GridLayout`: (2x2) organizing the four option buttons (`JButton` A, B, C, D).<br>  * `JLabel`: Question display, countdown timer badge, live status banners.<br>  * Action Events: Attached to option buttons, "Ready" button, and Leaderboard triggers with visual color feedback. |
+### Server control panel
 
----
+The server can be started from the control panel. Its status, connected-player count, game state, and activity log are displayed here.
 
-## 🚀 Modules Breakdown
+| Server offline | Server running |
+|---|---|
+| ![Server offline](assets/server-offline.png) | ![Server running](assets/server-running.png) |
 
-### 1. Quiz Server (`quiz.server.QuizServer`, `ServerGUI`)
-- Starts a `ServerSocket` on configurable port (default `5555`).
-- Listens for incoming connections, delegating each to a dedicated `ClientHandler` thread.
-- Offers both a **Swing Control Panel GUI** (`ServerGUI`) and headless execution mode.
+### Multiplayer gameplay
 
-### 2. Player Client & Login (`quiz.client.QuizClientGUI`, `quiz.net.QuizClientConnection`)
-- Modern Swing GUI with connection dialog.
-- Authenticates player credentials against the `players` table in the database.
-- Displays live lobby state and readiness indicators.
+Two clients can join the same match. Both see the current question, answer options, timer, and live leaderboard.
 
-### 3. Question Broadcast (`quiz.server.QuizServer`)
-- Questions retrieved from the `questions` database table.
-- Simultaneously broadcasts the exact same question to all connected clients.
-- Synchronized countdown timer ticks pushed to clients every second.
+![Two-player gameplay](assets/two-player-gameplay.png)
 
-### 4. Score Calculation (`quiz.model.Game`)
-- **Base Score**: 100 points for correct answer.
-- **Speed Bonus**: Up to 50 additional points calculated dynamically:
-  $$\text{SpeedBonus} = \left(\frac{\text{RemainingTime}}{\text{TotalTime}}\right) \times 50$$
-- **Streak Bonus**: Up to 50 points based on consecutive correct answers.
-- **Wrong Answer**: 0 points with streak reset.
+### Match startup and lobby
 
-### 5. Leaderboard (`quiz.db.DatabaseManager`, `Game.toLeaderboardPayload()`)
-- **Live Match Leaderboard**: Dynamic ranking table updated after every question.
-- **Persistent Database Leaderboard**: All-time high scores saved into the `scores` table via JDBC and viewable at any time.
+The server log shows incoming client connections and the match-start process.
 
----
+![Server match startup](assets/server-match-start.png)
 
-## 🗄️ Database Tables Schema
+A connected player waits in the lobby and can use **Ready for Match** when available.
 
-```sql
--- 1. Players Table
-CREATE TABLE IF NOT EXISTS players (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    username TEXT UNIQUE NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+![Player lobby](assets/player-lobby.png)
 
--- 2. Questions Table
-CREATE TABLE IF NOT EXISTS questions (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    question_text TEXT NOT NULL,
-    option_a TEXT NOT NULL,
-    option_b TEXT NOT NULL,
-    option_c TEXT NOT NULL,
-    option_d TEXT NOT NULL,
-    correct_option INTEGER NOT NULL, -- 0 for A, 1 for B, 2 for C, 3 for D
-    category TEXT
-);
+The server returns to its waiting state when no players are connected.
 
--- 3. Scores Table
-CREATE TABLE IF NOT EXISTS scores (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    player_id INTEGER NOT NULL,
-    score INTEGER NOT NULL,
-    questions_answered INTEGER NOT NULL,
-    correct_answers INTEGER NOT NULL,
-    played_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (player_id) REFERENCES players(id)
-);
-```
+![Server waiting lobby](assets/server-waiting-lobby.png)
 
----
+### SQLite question bank and player records
 
-## 💻 How to Run
+The question bank contains multiple-choice questions, four answer options, the correct-option value, and a category.
 
-### Step 1: Compile the Project
-Double click `build.bat` or run:
-```cmd
-javac -cp ".;lib\*" -d bin src\quiz\model\*.java src\quiz\net\*.java src\quiz\db\*.java src\quiz\server\*.java src\quiz\client\*.java src\quiz\test\*.java
-```
+![Question bank](assets/question-bank.png)
 
-### Step 2: Start the Quiz Server
-Double click `run-server.bat` or run:
-```cmd
-java --enable-native-access=ALL-UNNAMED -cp "bin;lib\*" quiz.server.ServerGUI
-```
-Click **"Start Server"** (default port `5555`).
+The SQLite `players` table stores player IDs, usernames, and account creation timestamps.
 
-### Step 3: Launch Player Clients
-Double click `run-client.bat` to launch contestant clients:
-```cmd
-java --enable-native-access=ALL-UNNAMED -cp "bin;lib\*" quiz.client.QuizClientGUI
-```
-- Enter your username and connect to `localhost:5555`.
-- Open a second instance of `run-client.bat` with a different username to test multiplayer competition!
-- Click **"Ready for Match"** on both clients; the countdown starts automatically.
+![SQLite players table](assets/sqlite-players-table.png)
 
-### Step 4: Run Automated Simulation Test
-To test the complete networking, database, scoring, and leaderboard flow headlessly:
-```cmd
-run-test.bat
-```
+Another view of the question bank:
 
+![Question bank view](assets/question-bank-view.png)
+
+## Technology Stack
+
+| Component | Technology |
+|---|---|
+| Programming language | Java |
+| Desktop GUI | Java Swing |
+| Networking | TCP sockets (`ServerSocket` / `Socket`) |
+| Database | SQLite |
+| Database connectivity | JDBC |
+
+## Database
+
+The screenshots show the following SQLite tables:
+
+- `players` — registered player information.
+- `questions` — quiz questions, options, correct answers, and categories.
+- `scores` — score records.
+- `sqlite_sequence` — SQLite's internal sequence tracking table.
+
+## Running the Project
+
+> The exact build command and Java main-class names depend on the source-code layout. The steps below describe the expected run order without assuming a particular build tool.
+
+1. Install a Java Development Kit (JDK).
+2. Make sure the SQLite JDBC driver is available on the project's classpath.
+3. Open the project in your Java IDE, or compile it using the build configuration included with your source code.
+4. Start the **Quiz Server** application.
+5. Enter the server port (the demonstrated port is `5555`) and click **Start Server**.
+6. Launch the **Player Client** on each player's computer.
+7. Connect each client to the server's IP address and port, then log in with a username.
+8. Once the required players have joined, use the ready/match controls to begin playing.
+
+### Connecting from another computer
+
+- Run the server on the host computer.
+- Find the host computer's local network IP address.
+- In each client, use that IP address and the same port configured in the server.
+- Ensure both computers are on a network that allows them to communicate.
+- Allow the Java application through the host computer's firewall, or create an inbound rule for the configured TCP port if required.
+
+`127.0.0.1` (localhost) only works for clients running on the same computer as the server. For another computer, use the server computer's LAN IP address.
+
+## Project Notes
+
+- The screenshots demonstrate a server using port `5555` and two connected players.
+- The displayed gameplay example contains five questions, with a countdown shown for each question.
+- The database screenshots show ten question records.
+- This README documents the visible application and database features. Add your actual package names, main classes, build instructions, and any deployment details once those are finalized.
+
+## Future Improvements
+
+- Add configurable match size and question count.
+- Add more quiz categories and difficulty levels.
+- Improve reconnect handling if a player loses their network connection.
+- Add a match history screen and per-player statistics.
+- Package the server and client as runnable JAR files.
+
+## License
+
+Add a license before distributing or reusing this project publicly.
